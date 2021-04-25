@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"strconv"
+	"sync"
 )
 
 type Server struct {
@@ -32,6 +33,7 @@ func (s *Server) ListenAndServe(network, address string) error {
 			continue
 		}
 		go func() {
+			fmt.Println(conn.RemoteAddr())
 			if err := s.HandleConn(conn); err != nil {
 				log.Println(err)
 			}
@@ -76,6 +78,7 @@ func (s *Server) HandleConn(conn net.Conn) error {
 	if _, err := conn.Read(cmd); err != nil {
 		return err
 	}
+	// todo: handle bind and udp
 	switch cmd[0] {
 	// connect cmd
 	case 1:
@@ -108,7 +111,7 @@ func (s *Server) HandleConn(conn net.Conn) error {
 		return err
 	}
 	log.Println(string(address) + ":" + strconv.Itoa(int(port[0])*256+int(port[1])))
-	var addressInfo = make([]byte, 4+addressLen[0])
+	var addressInfo = make([]byte, 0, 4+addressLen[0])
 	for _, v := range [][]byte{addressType, addressLen, address, port} {
 		for _, val := range v {
 			addressInfo = append(addressInfo, val)
@@ -124,8 +127,21 @@ func (s *Server) HandleConn(conn net.Conn) error {
 	if _, err := conn.Write(append([]byte{5, 0, 0}, addressInfo...)); err != nil {
 		return err
 	}
-	fmt.Print(111);fmt.Println(io.Copy(bindConn, conn))
-	fmt.Print(222);fmt.Println(io.Copy(conn, bindConn))
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		if _, err := io.Copy(bindConn, conn); err != nil {
+			log.Println(err)
+		}
+		wg.Done()
+	}()
+	go func() {
+		if _, err := io.Copy(conn, bindConn); err != nil {
+			log.Println(err)
+		}
+		wg.Done()
+	}()
+	wg.Wait()
 	return nil
 }
 
