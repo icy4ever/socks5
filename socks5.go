@@ -2,8 +2,8 @@ package socks5
 
 import (
 	"errors"
+	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net"
 	"strconv"
@@ -109,34 +109,24 @@ func (s *Server) HandleConn(conn net.Conn) error {
 	}
 	log.Println(string(address) + ":" + strconv.Itoa(int(port[0])*256+int(port[1])))
 	bindConn, err := net.Dial("tcp", string(address)+":"+strconv.Itoa(int(port[0])*256+int(port[1])))
+	var addressInfo = make([]byte, 4+addressLen[0])
+	for _, v := range [][]byte{addressType, addressLen, address, port} {
+		for _, val := range v {
+			addressInfo = append(addressInfo, val)
+		}
+	}
 	if err != nil {
 		log.Println(err)
-		if _, err := conn.Write(append([]byte{5, 1, 0}, append(addressType, append(address, port...)...)...)); err != nil {
+		if _, err := conn.Write(append([]byte{5, 1, 0}, addressInfo...)); err != nil {
 			return err
 		}
 		return err
 	}
-	if _, err := conn.Write(append([]byte{5, 0, 0}, append(addressType, append(address, port...)...)...)); err != nil {
+	if _, err := conn.Write(append([]byte{5, 0, 0}, addressInfo...)); err != nil {
 		return err
 	}
-	for {
-		req, err := ioutil.ReadAll(conn)
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-		if _, err := bindConn.Write(req); err != nil {
-			log.Println(err)
-		}
-		resp, err := ioutil.ReadAll(bindConn)
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-		if _,err:=conn.Write(resp);err!=nil {
-			log.Println(err)
-		}
-	}
+	go io.Copy(bindConn, conn)
+	fmt.Println(io.Copy(conn, bindConn))
 	return nil
 }
 
