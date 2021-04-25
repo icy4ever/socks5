@@ -94,7 +94,7 @@ func (s *Server) HandleConn(conn net.Conn) error {
 	if _, err := conn.Read(addressType); err != nil {
 		return err
 	}
-	log.Println(addressType)
+	log.Println(cmd)
 	var addressLen = make([]byte, 1)
 	if _, err := conn.Read(addressLen); err != nil {
 		return err
@@ -108,15 +108,14 @@ func (s *Server) HandleConn(conn net.Conn) error {
 		return err
 	}
 	log.Println(string(address) + ":" + strconv.Itoa(int(port[0])*256+int(port[1])))
-	bindConn, err := net.Dial("tcp", string(address)+":"+strconv.Itoa(int(port[0])*256+int(port[1])))
 	var addressInfo = make([]byte, 4+addressLen[0])
 	for _, v := range [][]byte{addressType, addressLen, address, port} {
 		for _, val := range v {
 			addressInfo = append(addressInfo, val)
 		}
 	}
+	bindConn, err := net.Dial("tcp", string(address)+":"+strconv.Itoa(int(port[0])*256+int(port[1])))
 	if err != nil {
-		log.Println(err)
 		if _, err := conn.Write(append([]byte{5, 1, 0}, addressInfo...)); err != nil {
 			return err
 		}
@@ -125,8 +124,8 @@ func (s *Server) HandleConn(conn net.Conn) error {
 	if _, err := conn.Write(append([]byte{5, 0, 0}, addressInfo...)); err != nil {
 		return err
 	}
-	go io.Copy(bindConn, conn)
-	fmt.Println(io.Copy(conn, bindConn))
+	fmt.Print(111);fmt.Println(io.Copy(bindConn, conn))
+	fmt.Print(222);fmt.Println(io.Copy(conn, bindConn))
 	return nil
 }
 
