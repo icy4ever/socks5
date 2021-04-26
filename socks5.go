@@ -12,11 +12,13 @@ import (
 
 type Server struct {
 	Auth
+	WhiteList []net.IP
 }
 
-func New(auth Auth) *Server {
+func New(auth Auth, whiteList []net.IP) *Server {
 	return &Server{
 		auth,
+		whiteList,
 	}
 }
 
@@ -26,10 +28,18 @@ func (s *Server) ListenAndServe(network, address string) error {
 		log.Printf("Net Listen Failed ! Error Happened : %s", err.Error())
 		return err
 	}
+	// init filter
+	var filterMap = make(map[string]bool)
+	for _,v:=range s.WhiteList {
+		filterMap[string(v)] = true
+	}
 	for {
 		conn, err := l.Accept()
 		if err != nil {
 			log.Printf("Accept Conn Failed ! Error Happened : %s", err.Error())
+			continue
+		}
+		if !filterMap[conn.RemoteAddr().String()] {
 			continue
 		}
 		go func() {
@@ -97,7 +107,6 @@ func (s *Server) HandleConn(conn net.Conn) error {
 	if _, err := conn.Read(addressType); err != nil {
 		return err
 	}
-	log.Println(cmd)
 	var addressLen = make([]byte, 1)
 	if _, err := conn.Read(addressLen); err != nil {
 		return err
@@ -110,7 +119,6 @@ func (s *Server) HandleConn(conn net.Conn) error {
 	if _, err := conn.Read(port); err != nil {
 		return err
 	}
-	log.Println(string(address) + ":" + strconv.Itoa(int(port[0])*256+int(port[1])))
 	var addressInfo = make([]byte, 0, 4+addressLen[0])
 	for _, v := range [][]byte{addressType, addressLen, address, port} {
 		for _, val := range v {
