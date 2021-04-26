@@ -2,7 +2,6 @@ package socks5
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"net"
@@ -12,13 +11,13 @@ import (
 
 type Server struct {
 	Auth
-	WhiteList []net.IP
+	Filter
 }
 
-func New(auth Auth, whiteList []net.IP) *Server {
+func New(auth Auth, filter Filter) *Server {
 	return &Server{
 		auth,
-		whiteList,
+		filter,
 	}
 }
 
@@ -28,22 +27,25 @@ func (s *Server) ListenAndServe(network, address string) error {
 		log.Printf("Net Listen Failed ! Error Happened : %s", err.Error())
 		return err
 	}
-	// init filter
-	var filterMap = make(map[string]bool)
-	for _,v:=range s.WhiteList {
-		filterMap[string(v)] = true
-	}
+
 	for {
 		conn, err := l.Accept()
 		if err != nil {
 			log.Printf("Accept Conn Failed ! Error Happened : %s", err.Error())
 			continue
 		}
-		if !filterMap[conn.RemoteAddr().String()] {
+		if !s.Pass(conn.RemoteAddr()) {
+			log.Println("ip refuse:", conn.RemoteAddr().String())
+			_ = conn.Close()
 			continue
 		}
 		go func() {
-			fmt.Println(conn.RemoteAddr())
+			defer func() {
+				if err := conn.Close(); err != nil {
+					log.Println(err)
+				}
+			}()
+			log.Println("ip accept:", conn.RemoteAddr().String())
 			if err := s.HandleConn(conn); err != nil {
 				log.Println(err)
 			}
