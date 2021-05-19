@@ -13,7 +13,7 @@ func (b BasicAuth) Verify(params ...interface{}) bool {
 	if !ok {
 		return false
 	}
-	password, ok := params[0].(string)
+	password, ok := params[1].(string)
 	if !ok {
 		return false
 	}
