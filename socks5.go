@@ -28,7 +28,6 @@ func (s *Server) ListenAndServe(network, address string) error {
 		log.Printf("Net Listen Failed ! Error Happened : %s", err.Error())
 		return err
 	}
-
 	for {
 		conn, err := l.Accept()
 		if err != nil {
@@ -113,12 +112,9 @@ func (s *Server) HandleConn(conn net.Conn) error {
 	}
 	// todo: handle bind and udp
 	switch cmd[0] {
-	// connect cmd
-	case 1:
-		// bind
-	case 2:
-		// udp
-	case 3:
+	case 1: // connect cmd
+	case 2: // bind
+	case 3: // udp
 	}
 	// read the rsv
 	var rsv = make([]byte, 1)
@@ -142,7 +138,13 @@ func (s *Server) HandleConn(conn net.Conn) error {
 	if _, err := conn.Read(port); err != nil {
 		return err
 	}
-	var addressInfo = make([]byte, 0, 4+addressLen[0])
+	var addressInfo []byte
+	switch addressType[0] {
+	case 1: // ipv4
+	case 3: // unix / socket
+	case 4: // ipv6
+	}
+	addressInfo = make([]byte, 0, 4+addressLen[0])
 	for _, v := range [][]byte{addressType, addressLen, address, port} {
 		for _, val := range v {
 			addressInfo = append(addressInfo, val)
@@ -162,13 +164,16 @@ func (s *Server) HandleConn(conn net.Conn) error {
 	wg.Add(2)
 	go func() {
 		if _, err := io.Copy(bindConn, conn); err != nil {
-			log.Println(err)
+			if _,err:=conn.Write([]byte{});err!=nil {
+				log.Println(222)
+			}
+			log.Println("1",err)
 		}
 		wg.Done()
 	}()
 	go func() {
 		if _, err := io.Copy(conn, bindConn); err != nil {
-			log.Println(err)
+			log.Println("2",err)
 		}
 		wg.Done()
 	}()
