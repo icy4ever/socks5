@@ -3,8 +3,8 @@ package socks5
 import (
 	"errors"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"io"
-	"log"
 	"net"
 	"strconv"
 	"sync"
@@ -25,29 +25,29 @@ func New(auth Auth, filter Filter) *Server {
 func (s *Server) ListenAndServe(network, address string) error {
 	l, err := net.Listen(network, address)
 	if err != nil {
-		log.Printf("Net Listen Failed ! Error Happened : %s", err.Error())
+		log.Error(err)
 		return err
 	}
+	log.Info("server start")
 	for {
 		conn, err := l.Accept()
 		if err != nil {
-			log.Printf("Accept Conn Failed ! Error Happened : %s", err.Error())
+			log.Error(err)
 			continue
 		}
 		if !s.Pass(conn.RemoteAddr()) {
-			log.Println("ip refuse:", conn.RemoteAddr().String())
 			_ = conn.Close()
 			continue
 		}
 		go func() {
 			defer func() {
 				if err := conn.Close(); err != nil {
-					log.Println(err)
+					log.Error(err)
 				}
+				aliveConns--
 			}()
-			log.Println("ip accept:", conn.RemoteAddr().String())
 			if err := s.HandleConn(conn); err != nil {
-				log.Println(err)
+				log.Error(err)
 			}
 		}()
 	}
@@ -164,16 +164,13 @@ func (s *Server) HandleConn(conn net.Conn) error {
 	wg.Add(2)
 	go func() {
 		if _, err := io.Copy(bindConn, conn); err != nil {
-			if _,err:=conn.Write([]byte{});err!=nil {
-				log.Println(222)
-			}
-			log.Println("1",err)
+			log.Error(err)
 		}
 		wg.Done()
 	}()
 	go func() {
 		if _, err := io.Copy(conn, bindConn); err != nil {
-			log.Println("2",err)
+			log.Error(err)
 		}
 		wg.Done()
 	}()

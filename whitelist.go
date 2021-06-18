@@ -1,6 +1,7 @@
 package socks5
 
 import (
+	log "github.com/sirupsen/logrus"
 	"net"
 	"regexp"
 )
@@ -31,5 +32,12 @@ func (w WhiteList) Pass(addr net.Addr) bool {
 			ip = address[:i]
 		}
 	}
-	return w.Map[ip]
+	isPass := w.Map[ip]
+	if !isPass {
+		log.Info("ip refuse:" + ip)
+	} else {
+		log.Info("ip accept:" + ip)
+		aliveConns++
+	}
+	return isPass
 }
