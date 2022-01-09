@@ -1,2 +1,44 @@
-./main/
-.idea
+# idea ignore
+.idea/
+*.ipr
+*.iml
+*.iws
+
+biligo/
+.vscode/
+
+*.swp
+
+# temp ignore
+*.log
+*.cache
+*.diff
+*.exe
+*.exe~
+*.patch
+*.json
+*.tmp
+*debug.test
+*.#*
+
+# system ignore
+.DS_Store
+Thumbs.db
+
+# project
+*.cert
+*.key
+.test
+iprepo.txt
+main
+
+app/*/*/cmd/cmd
+app/*/*/cmd/debug
+app/*/*/*/cmd/cmd
+app/*/*/*/cmd/debug
+app/*/*/*/dev.configs
+
+_output
+
+vendor/
+mpa-comet-web

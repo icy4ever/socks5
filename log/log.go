@@ -1,10 +1,11 @@
-package socks5
+package log
 
 import (
 	log "github.com/sirupsen/logrus"
 	"os"
 	"runtime"
 	"strconv"
+	"sync/atomic"
 	"time"
 )
 
@@ -22,20 +23,21 @@ func init() {
 	go stats()
 }
 
-var aliveConns int
+var AliveConns int32
 
 func stats() {
-	var t = time.NewTicker(5 * time.Second)
+	var t = time.NewTicker(10 * time.Second)
 	var m runtime.MemStats
 	for {
 		select {
 		case <-t.C:
+			ac := atomic.LoadInt32(&AliveConns)
 			runtime.ReadMemStats(&m)
 			log.WithFields(log.Fields{
 				"total alloc": strconv.Itoa(int(m.TotalAlloc/(1024*1024))) + "m",
 				"alloc":       strconv.Itoa(int(m.Alloc/(1024*1024))) + "m",
-				"gc count":        m.NumGC,
-				"alive conns":     aliveConns,
+				"gc count":    m.NumGC,
+				"alive conns": ac,
 			}).Info()
 		}
 	}

@@ -1,21 +1,30 @@
-package socks5
+package server
 
 import (
 	"errors"
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"io"
+	"math/rand"
 	"net"
+	"socks5/filter"
+	log2 "socks5/log"
 	"strconv"
 	"sync"
+	"sync/atomic"
+	"time"
 )
 
 type Server struct {
 	Auth
-	Filter
+	filter.Filter
 }
 
-func New(auth Auth, filter Filter) *Server {
+func init() {
+	rand.Seed(time.Now().Unix())
+}
+
+func New(auth Auth, filter filter.Filter) *Server {
 	return &Server{
 		auth,
 		filter,
@@ -40,11 +49,12 @@ func (s *Server) ListenAndServe(network, address string) error {
 			continue
 		}
 		go func() {
+			atomic.AddInt32(&log2.AliveConns, 1)
 			defer func() {
 				if err := conn.Close(); err != nil {
 					log.Error(err)
 				}
-				aliveConns--
+				atomic.AddInt32(&log2.AliveConns, -1)
 			}()
 			if err := s.HandleConn(conn); err != nil {
 				log.Error(err)

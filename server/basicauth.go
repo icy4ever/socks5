@@ -1,4 +1,4 @@
-package socks5
+package server
 
 type BasicAuth struct {
 	Username string

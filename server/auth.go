@@ -1,4 +1,4 @@
-package socks5
+package server
 
 type Auth interface {
 	Verify(...interface{}) bool
