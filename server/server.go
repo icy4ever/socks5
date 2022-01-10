@@ -4,13 +4,13 @@ import (
 	"errors"
 	"fmt"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 	"io"
 	"math/rand"
 	"net"
 	"socks5/filter"
 	log2 "socks5/log"
 	"strconv"
-	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -170,22 +170,22 @@ func (s *Server) HandleConn(conn net.Conn) error {
 	if _, err := conn.Write(append([]byte{5, 0, 0}, addressInfo...)); err != nil {
 		return err
 	}
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
+	var errg errgroup.Group
+	errg.Go(func() error {
 		if _, err := io.Copy(bindConn, conn); err != nil {
 			log.Error(err)
+			return err
 		}
-		wg.Done()
-	}()
-	go func() {
+		return nil
+	})
+	errg.Go(func() error {
 		if _, err := io.Copy(conn, bindConn); err != nil {
 			log.Error(err)
+			return err
 		}
-		wg.Done()
-	}()
-	wg.Wait()
-	return nil
+		return nil
+	})
+	return errg.Wait()
 }
 
 func (s *Server) checkVersion(conn net.Conn) error {
