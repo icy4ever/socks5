@@ -32,12 +32,6 @@ Thumbs.db
 iprepo.txt
 main
 
-app/*/*/cmd/cmd
-app/*/*/cmd/debug
-app/*/*/*/cmd/cmd
-app/*/*/*/cmd/debug
-app/*/*/*/dev.configs
-
 _output
 
 vendor/
