@@ -1,20 +1,21 @@
 package main
 
 import (
-	"fmt"
+	"flag"
 	"socks5/filter"
 	"socks5/server"
-	"socks5/uid"
+)
+
+var (
+	name     = flag.String("user_name", "socks5", "socks5 proxy username")
+	password = flag.String("password", "20220101", "socks5 proxy password")
 )
 
 func main() {
-	token := uid.NewID().String()
-	fmt.Println(fmt.Sprintf("your key is : %s", token))
-	httpFilter, err := filter.NewHttpFilter(":80", token)
-	if err != nil {
-		panic(err)
-	}
-	serve := server.New(server.NoAuth{}, httpFilter)
+	serve := server.New(server.BasicAuth{
+		Username: *name,
+		Password: *password,
+	}, filter.NoFilter{})
 	if err := serve.ListenAndServe("tcp", ":1080"); err != nil {
 		panic(err)
 	}
