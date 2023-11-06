@@ -41,29 +41,39 @@ func (s *Server) ListenAndServe(network, address string) error {
 		return err
 	}
 	log.Info("server start")
-	for {
-		conn, err := l.Accept()
-		if err != nil {
-			log.Error(err)
-			continue
-		}
-		if !s.Pass(conn.RemoteAddr()) {
-			_ = conn.Close()
-			continue
-		}
-		go func() {
-			atomic.AddInt32(&log2.AliveConns, 1)
-			defer func() {
-				if err := conn.Close(); err != nil {
+
+	maxListenRoutine := 10
+	var eg errgroup.Group
+
+	for i := 0; i < maxListenRoutine; i++ {
+		eg.Go(func() error {
+			for {
+				conn, err := l.Accept()
+				if err != nil {
 					log.Error(err)
+					continue
 				}
-				atomic.AddInt32(&log2.AliveConns, -1)
-			}()
-			if err := s.HandleConn(conn); err != nil {
-				log.Error(err)
+				if !s.Pass(conn.RemoteAddr()) {
+					_ = conn.Close()
+					continue
+				}
+				go func() {
+					atomic.AddInt32(&log2.AliveConns, 1)
+					defer func() {
+						if err := conn.Close(); err != nil {
+							log.Error(err)
+						}
+						atomic.AddInt32(&log2.AliveConns, -1)
+					}()
+					if err := s.HandleConn(conn); err != nil {
+						log.Error(err)
+					}
+				}()
 			}
-		}()
+		})
 	}
+
+	return eg.Wait()
 }
 
 func (s *Server) HandleConn(conn net.Conn) error {
