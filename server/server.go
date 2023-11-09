@@ -42,41 +42,28 @@ func (s *Server) ListenAndServe(network, address string) error {
 	}
 	log.Info("server start")
 
-	maxListenRoutine := 10
-	var eg errgroup.Group
-
-	for i := 0; i < maxListenRoutine; i++ {
-		eg.Go(func() error {
-			for {
-				conn, err := l.Accept()
-				if err != nil {
-					log.Error(err)
-					continue
-				}
-				if !s.Pass(conn.RemoteAddr()) {
-					_ = conn.Close()
-					continue
-				}
-				go func() {
-					atomic.AddInt32(&log2.AliveConns, 1)
-					defer func() {
-						if err := conn.Close(); err != nil {
-							log.Error(err)
-						}
-						atomic.AddInt32(&log2.AliveConns, -1)
-					}()
-					if err := s.HandleConn(conn); err != nil {
-						log.Error(err)
-					}
-				}()
+	for {
+		conn, err := l.Accept()
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+		if !s.Pass(conn.RemoteAddr()) {
+			_ = conn.Close()
+			continue
+		}
+		go func() {
+			atomic.AddInt32(&log2.AliveConns, 1)
+			defer atomic.AddInt32(&log2.AliveConns, -1)
+			if err := s.HandleConn(conn); err != nil {
+				log.Error(err)
 			}
-		})
+		}()
 	}
-
-	return eg.Wait()
 }
 
 func (s *Server) HandleConn(conn net.Conn) error {
+	defer conn.Close()
 	// read the auth methods
 	if err := s.checkAuthSupported(conn); err != nil {
 		return err
@@ -87,9 +74,7 @@ func (s *Server) HandleConn(conn net.Conn) error {
 	if err != nil {
 		return err
 	}
-	if bindConn == nil {
-		panic(bindConn)
-	}
+	defer bindConn.Close()
 
 	var errg errgroup.Group
 	errg.Go(func() error {
@@ -106,7 +91,12 @@ func (s *Server) HandleConn(conn net.Conn) error {
 		}
 		return nil
 	})
-	return errg.Wait()
+
+	if err := errg.Wait(); err != nil {
+		return err
+	}
+
+	return conn.Close()
 }
 
 func checkVersion(conn net.Conn) error {
